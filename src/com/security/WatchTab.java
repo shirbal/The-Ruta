@@ -6,7 +6,6 @@ import java.io.FileOutputStream;
 
 import com.security.R;
 
-import NewObjects.ProgressObject;
 import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Intent;
@@ -23,6 +22,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.VideoView;
 
+import com.dataobjects.ProgressObject;
 //import com.parse.FindCallback;
 //import com.parse.GetDataCallback;
 //import com.parse.ParseException;

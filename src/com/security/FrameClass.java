@@ -6,8 +6,6 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-import BackgroundsThreads.CluodUploadClass;
-import NewObjects.Param;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
@@ -20,8 +18,10 @@ import android.media.MediaRecorder;
 import android.os.Environment;
 import android.view.SurfaceView;
 
+import com.dataobjects.Param;
 import com.parse.ParseObject;
 import com.parse.ParseUser;
+import com.workers.CluodUploadClass;
 
 /**The most important class of the application.
  * This class is responsible for taking frames and comparing them,
@@ -79,7 +79,6 @@ public class FrameClass implements PreviewCallback {
 		currentUser = ParseUser.getCurrentUser();
 		currentObj = null;
 		this.location = location;
-		
 		result = true;
 		SameFrame = 0;
 		canRecord = true;

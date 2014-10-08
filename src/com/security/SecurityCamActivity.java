@@ -3,9 +3,8 @@ package com.security;
 import java.io.File;
 
 import com.security.R;
+import com.workers.DestroyThread;
 
-import BackgroundsThreads.DestroyThread;
-import NewObjects.ProgressObject;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
@@ -21,6 +20,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
+import com.dataobjects.ProgressObject;
 import com.parse.LogInCallback;
 import com.parse.Parse;
 import com.parse.ParseException;

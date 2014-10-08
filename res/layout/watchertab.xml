@@ -36,7 +36,7 @@
                 android:visibility="invisible" />
         </LinearLayout>
 
-        <NewObjects.MyVideoView
+        <com.dataobjects.MyVideoView
             android:id="@+id/videoWatch"
             android:layout_width="287dp"
             android:layout_height="162dp"

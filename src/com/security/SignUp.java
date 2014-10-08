@@ -1,7 +1,7 @@
 package com.security;
 
 import com.security.R;
-import NewObjects.ProgressObject;
+
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
@@ -14,6 +14,7 @@ import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.EditText;
 
+import com.dataobjects.ProgressObject;
 import com.parse.ParseUser;
 import com.parse.SignUpCallback;
 

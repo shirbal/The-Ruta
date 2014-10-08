@@ -308,6 +308,7 @@ public class CameraActivity extends Activity implements OnClickListener,
 			mSensorManager.registerListener(CameraActivity.this, mSensor,
 					SensorManager.SENSOR_ACCELEROMETER);
 			mCamera.setPreviewCallback(pc);
+			
 			break;
 
 		case R.id.button_stop:
