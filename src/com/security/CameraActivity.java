@@ -320,16 +320,6 @@ public class CameraActivity extends Activity implements OnClickListener,
 		}
 	}
 
-	public void releaseMediaRecorder() {
-		if (mRecorder != null) {
-			mRecorder.stop();
-			mRecorder.reset(); // clear recorder configuration
-			mRecorder.release(); // release the recorder object
-			mRecorder = null;
-			mCamera.lock(); // lock camera for later use
-			FrameClass.recordingFlag = false;
-		}
-	}
 
 	public void onAccuracyChanged(Sensor arg0, int arg1) {
 	}
