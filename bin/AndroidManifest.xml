@@ -1,0 +1,104 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.security"
+    android:versionCode="1"
+    android:versionName="1.0" >
+
+    <uses-sdk
+        android:minSdkVersion="8"
+        android:targetSdkVersion="8" />
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <uses-feature android:name="android.hardware.camera" />
+    <uses-feature android:name="android.hardware.camera.autofocus" />
+
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.WRITE_SETTINGS" />
+    <!--  <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />-->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    
+    
+    <application
+        android:icon="@drawable/ic_cam"
+        android:label="@string/app_name" >
+        <activity
+            android:name=".SecurityCamActivity"
+            android:label="@string/app_name" >
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".SignUp"
+            android:label="@string/app_name" >
+            <intent-filter>
+                <action android:name="com.security.signup" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".ForgotPassword"
+            android:label="@string/app_name" >
+            <intent-filter>
+                <action android:name="com.security.forgot_password" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".MainPage"
+            android:label="@string/app_name" >
+            <intent-filter>
+                <action android:name="com.security.FIRSTPAGE" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".WellcomeTab"
+            android:label="@string/app_name" >
+            <intent-filter>
+                <action android:name="com.security.WellcomeTab" />
+
+                <category android:name="android.intent.category.TAB" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".CameraTab"
+            android:label="@string/app_name"
+            android:screenOrientation="landscape" >
+            <intent-filter>
+                <action android:name="com.security.CameraTab" />
+
+                <category android:name="android.intent.category.TAB" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".WatchTab"
+            android:label="@string/app_name" >
+            <intent-filter>
+                <action android:name="com.security.WatchTab" />
+
+                <category android:name="android.intent.category.TAB" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".CameraActivity"
+            android:label="@string/app_name"
+            android:screenOrientation="landscape" >
+            <intent-filter>
+                <action android:name="android.intent.action.Camera" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>
