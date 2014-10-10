@@ -1,8 +1,10 @@
 package com.security;
 
 import java.io.File;
+import java.lang.reflect.InvocationTargetException;
 
 import com.security.R;
+import com.server.UserHandler;
 import com.workers.DestroyThread;
 
 import android.app.Activity;
@@ -20,11 +22,12 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
+import com.dataobjects.LoginResult;
 import com.dataobjects.ProgressObject;
-import com.parse.LogInCallback;
+import com.enums.InputParametersEnum;
+import com.enums.LoginResultEnum;
+import com.infrastructure.ObjectFactory;
 import com.parse.Parse;
-import com.parse.ParseException;
-import com.parse.ParseUser;
 
 /**The main (first run) class of the application
  * its initializes the cloud and let you choose if you want to login, register or
@@ -42,15 +45,14 @@ public class SecurityCamActivity extends Activity implements OnClickListener {
 	/**Text view fields*/
 	TextView forgotPass, signUp;
 	/**String that holds the UserName and the Password*/
-	String userName, password;
-	/**The user*/
-	ParseUser user;
 	/**Dialog*/
-	AlertDialog.Builder d;
+	AlertDialog.Builder loginAlertDialog;
 	/**progress dialog*/
 	ProgressDialog loginDialog;
 	/**flag indicates if the phone was stolen*/
 	static Boolean stolenFlag = false;
+	
+	UserHandler userHandler = null;
 
 	/**The "constructor" of SecurityCamActivity.
 	 * Runs the first time the activity is called.
@@ -61,19 +63,48 @@ public class SecurityCamActivity extends Activity implements OnClickListener {
 		super.onCreate(savedInstanceState);
 		Parse.initialize(this, "wQbQt0bXRdUK7iGQO5MpxvI2QuLukmU4r8BWnd5F",
 				"MU5X5m6IbcAz4JncTaLpocATTgpkNQqsvfhvCTLJ");//initializes the parse account
-		user = new ParseUser();
 		requestWindowFeature(Window.FEATURE_NO_TITLE);
 		setContentView(R.layout.main);
-		d = new AlertDialog.Builder(this);
+		initializeViewBinding();
+
+		this.getWindow().setSoftInputMode(
+				WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
+		initializeDialogs();
+		initializeUser();
+	}
+	/**
+	 * 
+	 */
+	private void initializeDialogs() {
+		loginDialog = ProgressObject.getNewProgressBar(this, "Logging In...",
+				ProgressDialog.STYLE_SPINNER);
+		loginAlertDialog = new AlertDialog.Builder(this);
+	}
+	/**
+	 * 
+	 */
+	private void initializeViewBinding() {
 		signUp = (TextView) findViewById(R.id.loginSign);
 		logIn = (Button) findViewById(R.id.loginlogin);
 		forgotPass = (TextView) findViewById(R.id.loginForgotPass);
 		editUser = (EditText) findViewById(R.id.loginUser);
 		editPass = (EditText) findViewById(R.id.loginPass);
-		this.getWindow().setSoftInputMode(
-				WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
-		loginDialog = ProgressObject.getNewProgressBar(this, "Logging In...",
-				ProgressDialog.STYLE_SPINNER);
+	}
+	/**
+	 */
+	private void initializeUser() {
+		ObjectFactory.Instance().register("UserHandler", new UserHandler());
+		try {
+			userHandler = (UserHandler) ObjectFactory.Instance().getInstance("UserHandler");
+		} catch (IllegalArgumentException e) {
+			e.printStackTrace();
+		} catch (InstantiationException e) {
+			e.printStackTrace();
+		} catch (IllegalAccessException e) {
+			e.printStackTrace();
+		} catch (InvocationTargetException e) {
+			e.printStackTrace();
+		}
 	}
 	/**Called when the CameraActivity start.
 	 * It starts after OnCreate is called or when the activity comes back from pause.
@@ -94,8 +125,8 @@ public class SecurityCamActivity extends Activity implements OnClickListener {
 	@Override
 	public void onBackPressed() {
 
-		d.setMessage("Are you sure you want to quit?");
-		d.setPositiveButton("YES", new DialogInterface.OnClickListener() {
+		loginAlertDialog.setMessage("Are you sure you want to quit?");
+		loginAlertDialog.setPositiveButton("YES", new DialogInterface.OnClickListener() {
 
 			public void onClick(DialogInterface dialog, int which) {
 				deleteRecordedFilesFromPhone();
@@ -103,13 +134,13 @@ public class SecurityCamActivity extends Activity implements OnClickListener {
 				finish();
 			}
 		});
-		d.setNegativeButton("NO", new DialogInterface.OnClickListener() {
+		loginAlertDialog.setNegativeButton("NO", new DialogInterface.OnClickListener() {
 
 			public void onClick(DialogInterface dialog, int which) {
 				dialog.cancel();
 			}
 		});
-		d.show();
+		loginAlertDialog.show();
 	}
 
 	/**Called when some button is pressed*/
@@ -117,28 +148,8 @@ public class SecurityCamActivity extends Activity implements OnClickListener {
 		switch (v.getId()) {
 
 		case R.id.loginlogin:
-			userName = editUser.getText().toString();
-			password = editPass.getText().toString();
-			//checks if the information received is OK
-			if (userName.length() == 0 || password.length() == 0
-					|| userName == null || password == null) {
-
-				d.setMessage("Illegal Username or Password\n"
-						+ "Please try again");
-				d.setPositiveButton("OK",
-						new DialogInterface.OnClickListener() {
-
-							public void onClick(DialogInterface dialog,
-									int which) {
-								dialog.cancel();
-							}
-						});
-				d.show();
-				break;
-			}
-			loginDialog.show();
 			//login the user
-			loginUser(userName, password);
+			loginUser();
 
 			break;
 		case R.id.loginSign:
@@ -157,37 +168,58 @@ public class SecurityCamActivity extends Activity implements OnClickListener {
 	 * @param userName
 	 * @param password
 	 */
-	private void loginUser(String userName, String password) {
-		ParseUser.logInInBackground(userName, password, new LogInCallback() {
-
-			@Override
-			public void done(ParseUser arg0, ParseException e) {
-				if (arg0 != null) {
-					startActivity(new Intent("com.security.FIRSTPAGE"));
-					loginDialog.dismiss();
-				} else {
-					loginDialog.dismiss();
-					d.setMessage(e.getMessage() + "\n" + "Please signup");
-					d.setPositiveButton("OK",
-							new DialogInterface.OnClickListener() {
-
-								public void onClick(DialogInterface dialog,
-										int which) {
-									dialog.cancel();
-								}
-							});
-					d.show();
-				}
-			}
-		});
+	private void loginUser() {
+		loginDialog.show();
+		String userName = editUser.getText().toString();
+		String password = editPass.getText().toString();
+		LoginResult result  =  userHandler.logIn(userName, password);
+		if(result.Result == LoginResultEnum.Parameter_Fail && 
+				result.InputResult == InputParametersEnum.UsernameInvalid)
+		{
+			showErrorDialog("Illegal Username\n");
+		}
+		if(result.Result == LoginResultEnum.Parameter_Fail && 
+				result.InputResult == InputParametersEnum.PasswordInvalid)
+		{
+			showErrorDialog("Illegal Password\n");
+		}
+		if(result.Result == LoginResultEnum.Parse_Fail)
+		{
+			showErrorDialog(result.Message + "\n");
+		}
+		else
+		{
+			startActivity(new Intent("com.security.FIRSTPAGE"));
+			loginDialog.dismiss();
+		}
 	}
+	
+	/**
+	 * 
+	 * @param message
+	 */
+	private void showErrorDialog(String message)
+	{
+		loginDialog.dismiss();
+		loginAlertDialog.setMessage(message
+				+ "Please try again");
+		loginAlertDialog.setPositiveButton("OK",
+				new DialogInterface.OnClickListener() {
+
+					public void onClick(DialogInterface dialog,
+							int which) {
+						dialog.cancel();
+					}
+				});
+		loginAlertDialog.show();
+	}
+	
+	
 	/**Called when the activity resumes to run.*/
 	@Override
 	protected void onResume() {
 		super.onResume();
 		stolenFlag = false;
-		userName = "";
-		password = "";
 		editPass.setText("");
 		editUser.setText("");
 	}

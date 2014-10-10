@@ -1,6 +1,7 @@
 package com.security;
 
 import com.security.R;
+import com.server.UserHandler;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -15,8 +16,9 @@ import android.widget.Button;
 import android.widget.EditText;
 
 import com.dataobjects.ProgressObject;
-import com.parse.ParseUser;
-import com.parse.SignUpCallback;
+import com.dataobjects.SignupResult;
+import com.enums.InputParametersEnum;
+import com.enums.SignupResultEnum;
 
 /**This class is responsible for signing a new user to the application
  * 
@@ -31,13 +33,10 @@ public class SignUp extends Activity implements OnClickListener {
 	Button sign;
 	/**UserName, Password and email fields*/
 	EditText usernameEdit, passwordEdit, emailEdit;
-	//Strings that holds the UserName, Password and email
-	String username, password, email;
-	/**The user*/
-	ParseUser user;
 	/**progress bar*/
 	ProgressDialog signUpDialog;
 
+	UserHandler userHandler = null;
 	/**The "constructor" of SecurityCamActivity.
 	 * Runs the first time the activity is called.
 	 * Used for initialization.
@@ -49,14 +48,28 @@ public class SignUp extends Activity implements OnClickListener {
 		setContentView(R.layout.signup);
 		this.getWindow().setSoftInputMode(
 				WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
+		initializeViewBinding();
+		initializeMembers();
+	}
+
+	/**
+	 * 
+	 */
+	private void initializeMembers() {
+		alertsign = new AlertDialog.Builder(this);
+		signUpDialog = ProgressObject.getNewProgressBar(this, "Signing in...",
+				ProgressDialog.STYLE_SPINNER);
+		userHandler = new UserHandler();
+	}
+
+	/**
+	 * 
+	 */
+	private void initializeViewBinding() {
 		sign = (Button) findViewById(R.id.signupSign);
 		usernameEdit = (EditText) findViewById(R.id.signupUser);
 		passwordEdit = (EditText) findViewById(R.id.signupPass);
 		emailEdit = (EditText) findViewById(R.id.signupEmail);
-		user = new ParseUser();
-		alertsign = new AlertDialog.Builder(this);
-		signUpDialog = ProgressObject.getNewProgressBar(this, "Signing in...",
-				ProgressDialog.STYLE_SPINNER);
 	}
 
 	/**Called when the CameraActivity start.
@@ -73,9 +86,13 @@ public class SignUp extends Activity implements OnClickListener {
 	@Override
 	protected void onResume() {
 		super.onResume();
-		username = "";
-		password = "";
-		email = "";
+		resetViews();
+	}
+
+	/**
+	 * 
+	 */
+	private void resetViews() {
 		usernameEdit.setText("");
 		passwordEdit.setText("");
 		emailEdit.setText("");
@@ -84,77 +101,62 @@ public class SignUp extends Activity implements OnClickListener {
 	/**Called when some button is pressed*/
 	public void onClick(View v) {
 		switch (v.getId()) {
-		case R.id.signupSign:
-			username = usernameEdit.getText().toString();
-			password = passwordEdit.getText().toString();
-			email = emailEdit.getText().toString();
+			case R.id.signupSign:
+				String username = usernameEdit.getText().toString();
+				String password = passwordEdit.getText().toString();
+				String email = emailEdit.getText().toString();
+				signUp(username, password, email);
+		}
+	}
 
-			user.setUsername(username);
-			user.setPassword(password);
-			user.setEmail(email);
+	/**
+	 * @param username
+	 * @param password
+	 * @param email
+	 */
+	private void signUp(String username, String password, String email) {
+		signUpDialog.show();
+		SignupResult result =  userHandler.signUp(username, email, password);
+		if(result.Result == SignupResultEnum.Parameter_Fail &&
+				result.InputResult == InputParametersEnum.UsernameInvalid	)
+		{
+			onParameterIlegal("Illegal userName\n");
+		}
+		if(result.Result == SignupResultEnum.Parameter_Fail &&
+				result.InputResult == InputParametersEnum.EmailInvalid	)
+		{
+			onParameterIlegal("Illegal e-mail\n");
+		}
+		if(result.Result == SignupResultEnum.Parameter_Fail &&
+				result.InputResult == InputParametersEnum.PasswordInvalid	)
+		{
+			onParameterIlegal("Illegal password\n");
+		}
+		
+		if(result.Result == SignupResultEnum.Parse_Fail)
+		{
+			onParameterIlegal(result.Message + "\n");
+		}
+		else {
+			finish();
+			signUpDialog.dismiss();
+		}
+	}
 
-			if (username.length() == 0 || username == null) {//checks if the username is OK
-				alertsign.setMessage("Illegal userName\n" + "Please try again");
-				alertsign.setPositiveButton("OK",
-						new DialogInterface.OnClickListener() {
-							public void onClick(DialogInterface dialog,
-									int which) {
-								dialog.cancel();
+	/**
+	 * 
+	 */
+	private void onParameterIlegal(String message) {
+		signUpDialog.dismiss();
+		alertsign.setMessage(message + "Please try again");
+		alertsign.setPositiveButton("OK",
+				new DialogInterface.OnClickListener() {
+					public void onClick(DialogInterface dialog,
+							int which) {
+						dialog.cancel();
 
-							}
-						});
-				alertsign.show();
-			} else if (password.length() == 0 || password == null) {//checks if the password is OK 
-				alertsign.setMessage("Illegal password\n" + "Please try again");
-				alertsign.setPositiveButton("OK",
-						new DialogInterface.OnClickListener() {
-
-							public void onClick(DialogInterface dialog,
-									int which) {
-								dialog.cancel();
-
-							}
-						});
-				alertsign.show();
-			} else if (email.length() == 0 || email == null) {//checks if the email is OK
-				alertsign.setMessage("Illegal e-mail\n" + "Please try again");
-				alertsign.setPositiveButton("OK",
-						new DialogInterface.OnClickListener() {
-
-							public void onClick(DialogInterface dialog,
-									int which) {
-								dialog.cancel();
-
-							}
-						});
-				alertsign.show();
-			} else {
-				signUpDialog.show();
-				user.signUpInBackground(new SignUpCallback() {//signup to the application
-
-					@Override
-					public void done(com.parse.ParseException e) {
-						if (e == null) {
-							finish();
-							signUpDialog.dismiss();
-						} else {
-							signUpDialog.dismiss();
-							alertsign.setMessage(e.getMessage() + "\n"
-									+ "Please try again");
-							alertsign.setPositiveButton("OK",
-									new DialogInterface.OnClickListener() {
-
-										public void onClick(
-												DialogInterface dialog,
-												int which) {
-											dialog.cancel();
-										}
-									});
-							alertsign.show();
-						}
 					}
 				});
-			}
-		}
+		alertsign.show();
 	}
 }
