@@ -1,31 +1,20 @@
 package com.security;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.List;
-import java.util.Locale;
 
+import com.hardwarehandlers.AudioHandler;
+import com.hardwarehandlers.PowerHandler;
+import com.hardwarehandlers.SensorHandler;
+import com.image.CameraPreview;
+import com.image.PreviewFramesHandler;
+import com.infrastructure.ISensorEvents;
 import com.security.R;
 
-//import NewObjects.EmailObject;
-//import SendingEmail.SendMailStolen;
 import android.app.Activity;
-import android.content.Context;
+import android.content.Intent;
 import android.hardware.Camera;
 import android.hardware.Camera.PreviewCallback;
 import android.hardware.Camera.Size;
-import android.hardware.Sensor;
-import android.hardware.SensorEvent;
-import android.hardware.SensorEventListener;
-import android.hardware.SensorManager;
-import android.location.Address;
-import android.location.Geocoder;
-import android.location.Location;
-import android.location.LocationManager;
-import android.media.AudioManager;
-import android.media.MediaRecorder;
 import android.os.Bundle;
-import android.os.PowerManager;
 import android.util.Log;
 import android.view.SurfaceView;
 import android.view.View;
@@ -34,72 +23,38 @@ import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.FrameLayout;
 
-import com.parse.ParseUser;
-//import com.security.R.id;
-
 /**
  * The main activity of the recording algorithm Responsible for taking control
  * on the camera and enabling recording.
- * 
+ * location
  * @extends Activity
  * @implements OnClickListener
  * @implements SensorEventListener
  */
-public class CameraActivity extends Activity implements OnClickListener,
-		SensorEventListener {
+public class CameraActivity extends Activity implements OnClickListener , ISensorEvents{
 
 	/** Stop Button */
 	Button stopButton;
 	/** camera instance */
 	private Camera mCamera;
 	/** Our surface of the preview */
-	private SurfaceView mPreview;
+	private SurfaceView mSurfaceView;
 	/** Preview Size */
-	private Size previewSize;
+	private Size mPreviewSize;
 	/** Media Type Image definition */
 	public static final int MEDIA_TYPE_IMAGE = 1;
 	/** Media Type Video definition */
 	public static final int MEDIA_TYPE_VIDEO = 2;
 	/** Our Frame Layout of the preview */
-	public FrameLayout preview;
+	public FrameLayout mFrameLayout;
 	/** Preview callback */
-	public PreviewCallback pc;
-	/** The media recorder for the video */
-	private MediaRecorder mRecorder;
-	/** the output file after capturing a video */
-	public File videoFile;
-	/** The user */
-	public ParseUser currentUser;
-	/** Power management for disabling the phone go sleep */
-	PowerManager pm;
-	/** Power management controller */
-	PowerManager.WakeLock wl;
-	/** Location manager */
-	private LocationManager locationManger;
-	/** Location provider */
-	private String locationProvider;
-	/** Geographic coder */
-	private Geocoder geoCoder;
-	/** List of addresses */
-	private List<Address> addList;
-	/** Sensor manager */
-	private SensorManager mSensorManager;
-	/** Sensor instance */
-	private Sensor mSensor;
-	/**
-	 * audio management for disabling the phone from ringing while on security
-	 * mode
-	 */
-	AudioManager audio;
-	/** X sensor location */
-	public float x;
-	/** Y sensor location */
-	public float y;
-	/** Z sensor location */
-	public float z;
-	public Boolean first;
-	/** Indicator if the phone was stolen */
-	static Boolean sendStolen = false;
+	public PreviewCallback mPreviewCallback;
+
+	private SensorHandler mSensorHandler;
+	
+	private AudioHandler mAudioHandler;
+	
+	private PowerHandler mPowerHandler;
 
 	/**
 	 * The "constructor" of CameraActivity. Runs the first time the activity is
@@ -110,94 +65,74 @@ public class CameraActivity extends Activity implements OnClickListener,
 		super.onCreate(savedInstanceState);
 		requestWindowFeature(Window.FEATURE_NO_TITLE);
 		setContentView(R.layout.cameraview);
-		// initiates the user information from the DB
-		currentUser = ParseUser.getCurrentUser();
-		// Create an instance of Camera
+		
+		tryGetCameraInstance();
+		initializeIfCameraAvilable();
+	}
 
-		mCamera = getCameraInstance();
-		while (mCamera == null) {
-			mCamera = getCameraInstance();
+	/**
+	 * 
+	 */
+	private void initializeIfCameraAvilable() {
+		if(mCamera != null)
+		{
+			initializePreviewView();
+			initializeHandlers();
+			initializeCaptureButton();
 		}
+	}
 
-		// Create our Preview view and set it as the content of our activity.
-		mPreview = new CameraPreview(this, mCamera);
-
-		preview = (FrameLayout) findViewById(R.id.camera_preview);
-		preview.addView(mPreview);
+	/**
+	 * 
+	 */
+	private void initializeCaptureButton() {
 		Button captureButton = (Button) findViewById(R.id.button_capture);
 		captureButton.setOnClickListener(this);
-		// Enabling sensor things
-		first = true;
-		mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-		mSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-
-		// initial audio manager
-		audio = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
 	}
 
 	/**
-	 * Called when the sensor location being changes. It stops the recording and
-	 * sends e-mail to the user that the phone was moved.
 	 * 
-	 * @param sensor
-	 *            event
 	 */
-	public void onSensorChanged(SensorEvent event) {
-		if (first) {
-			// initial the first place taken by the sensor
-			x = (event.values[0]);
-			y = (event.values[1]);
-			z = (event.values[2]);
-			first = false;
-		} else {
-			// check if the sensor moved
-			if ((event.values[0] - x > 5) || (event.values[1] - y > 5)
-					|| (event.values[2] - z > 5)) {
-				mSensorManager.unregisterListener(CameraActivity.this);
-				if (!sendStolen) {
-					// if moved we should inform the user about it by e-mail
-//					new SendMailStolen().execute(new EmailObject(
-//							"The phone was moved from his initial position",
-//							currentUser.getEmail()));
-					sendStolen = true;
-				}
-				// stop recording because of theft
-				FrameClass.canRecord = false;
-				FrameClass.forceStopRec = true;
-				if (FrameClass.recordingFlag == true)
-					return;
+	private void initializeHandlers() {
+		mSensorHandler = new SensorHandler(this);
+		mAudioHandler = new AudioHandler(this);
+		mPowerHandler = new PowerHandler(this);
+	}
 
-				FrameClass.canRecord = false;
-				if (wl.isHeld())
-					wl.release();
-				mCamera.stopPreview();
-				SecurityCamActivity.stolenFlag = true;
-				finish();
-			}
+	/**
+	 * 
+	 */
+	private void initializePreviewView() {
+		mSurfaceView = new CameraPreview(this, mCamera);
+		mFrameLayout = (FrameLayout) findViewById(R.id.camera_preview);
+		mFrameLayout.addView(mSurfaceView);
+	}
+
+	/**
+	 * 
+	 */
+	private void tryGetCameraInstance() {
+		// Create an instance of Camera
+		// TODO: remove this counter to other place
+		int counter = 5;
+		while (mCamera == null && counter > 0) {
+			mCamera = getCameraInstance();
+			counter --;
 		}
 	}
 
 	/**
-	 * Called when the Back button pressed. The method enabling the ringer back,
+	 * Called when the Back button pressed. The method enabling the ringemRecorderr back,
 	 * stops the recording, enabling the phone go to sleep and goes back to the
 	 * previous window.
 	 */
 	@Override
 	public void onBackPressed() {
-		// enabling the ringer back
-		audio.setRingerMode(2);
-		if (FrameClass.recordingFlag == true) {
-			return;
-		}
-		// stop recording
-		FrameClass.canRecord = false;
+		mAudioHandler.unmute();
 		// returning the ability of the phone to go to sleep
-		if (wl.isHeld()) {
-			wl.release();
-		}
+		mPowerHandler.release();
 		// stop the preview
 		mCamera.stopPreview();
-
 		super.onBackPressed();
 		finish();
 	}
@@ -213,49 +148,15 @@ public class CameraActivity extends Activity implements OnClickListener,
 		// gets the parameters for the camera
 		Camera.Parameters params = mCamera.getParameters();
 		if (params != null) {
-			previewSize = params.getPreviewSize();
+			mPreviewSize = params.getPreviewSize();
 		}
 		stopButton = (Button) findViewById(R.id.button_stop);
 		stopButton.setOnClickListener(this);
-		currentUser = ParseUser.getCurrentUser();
 		// initials the power manager
-		pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
-		wl = pm.newWakeLock(PowerManager.FULL_WAKE_LOCK, "My Tag");
-		// gps location initialize
-
-		locationManger = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-
-		geoCoder = new Geocoder(this, new Locale("en_IL"));
-
-		locationProvider = LocationManager.NETWORK_PROVIDER;
-
-		Location location = locationManger
-				.getLastKnownLocation(locationProvider);
-
-		try {
-			
-			if (location != null)
-				addList = geoCoder.getFromLocation(location.getLatitude(),
-						location.getLongitude(), 1);
-
 		
-		} catch (IOException e) {
-			
-
-			// e.printStackTrace();
-			Log.e("get address", e.getMessage());
-		}
+		mPowerHandler.acquire();
 		
-		String fileLoc=null;
-		if (addList != null) {
-			fileLoc = addList.get(0).getThoroughfare() + "-"
-					+ addList.get(0).getLocality();
-		}
-
-	
-		wl.acquire();
-		pc = new FrameClass(previewSize, mCamera, mRecorder, mPreview, fileLoc);
-		
+		mPreviewCallback = new PreviewFramesHandler(mPreviewSize, mCamera, mSurfaceView);
 	}
 
 	/**
@@ -266,31 +167,27 @@ public class CameraActivity extends Activity implements OnClickListener,
 	@Override
 	protected void onPause() {
 		// enabling the ringer back
-		audio.setRingerMode(2);
+		mAudioHandler.unmute();
 		super.onPause();
-		// stop recording
-		FrameClass.canRecord = false;
-		FrameClass.forceStopRec = true;
 		// returning the ability of the phone to go to sleep
-		if (wl.isHeld()) {
-			wl.release();
-		}
+		mPowerHandler.release();
 		// stop the preview
 		mCamera.stopPreview();
-		mSensorManager.unregisterListener(CameraActivity.this);
-		sendStolen = false;
+		
+		mSensorHandler.stop();
+		this.setResult(0, new Intent().putExtra("IsStolen",false ));
 		super.onBackPressed();
 		finish();
 	}
 
 	/** A safe way to get an instance of the Camera object. */
-	public static Camera getCameraInstance() {
+	private static Camera getCameraInstance() {
 		Camera c = null;
 		try {
 			// try to open camera instance
 			c = Camera.open(); // attempt to get a Camera instance
 		} catch (Exception e) {
-			return null;
+			Log.e("CameraActivity.getCameraInstance" , e.getMessage());
 		}
 		return c; // returns null if camera is unavailable
 	}
@@ -299,30 +196,49 @@ public class CameraActivity extends Activity implements OnClickListener,
 	public void onClick(View v) {
 		switch (v.getId()) {
 		case R.id.button_capture:
-			// disabling the ringer in security mode
-			audio.setRingerMode(0);
-			// enabling recording
-			FrameClass.forceStopRec = false;
-			FrameClass.canRecord = true;
-			// activating sensor
-			mSensorManager.registerListener(CameraActivity.this, mSensor,
-					SensorManager.SENSOR_ACCELEROMETER);
-			mCamera.setPreviewCallback(pc);
-			
+			startPreviewing();
 			break;
 
 		case R.id.button_stop:
-			// disabling recording
-			FrameClass.canRecord = false;
-			FrameClass.forceStopRec = true;
-			// disactivating sensor
-			mSensorManager.unregisterListener(CameraActivity.this);
+			stopPreviewing();
 			break;
 		}
 	}
 
+	/**
+	 * 
+	 */
+	private void stopPreviewing() {
+		//TODO: put password when trying to stop the recording
+		mAudioHandler.unmute();
+		// Deactivating sensor
+		mSensorHandler.stop();
+		// stop receiving preview callback
+		mCamera.setPreviewCallback(null);
+	}
+	
+	/**
+	 * 
+	 */
+	private void startPreviewing() {
+		// disabling the ringer in security mode
+		mAudioHandler.mute();
+		// activating sensor
+		mSensorHandler.start();
+		mCamera.setPreviewCallback(mPreviewCallback);
+	}
 
-	public void onAccuracyChanged(Sensor arg0, int arg1) {
+
+
+	@Override
+	public void onDeviceMoved() {
+		mAudioHandler.unmute();
+		mPowerHandler.release();
+		mSensorHandler.stop();
+		mCamera.setPreviewCallback(null);
+		mCamera.stopPreview();
+		this.setResult(0, new Intent().putExtra("IsStolen",true ));
+		finish();
 	}
 
 }

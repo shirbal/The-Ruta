@@ -1,7 +1,7 @@
 package com.security;
 
+
 import com.security.R;
-import com.server.UserHandler;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -19,6 +19,8 @@ import com.dataobjects.ProgressObject;
 import com.dataobjects.SignupResult;
 import com.enums.InputParametersEnum;
 import com.enums.SignupResultEnum;
+import com.infrastructure.ObjectFactory;
+import com.infrastructure.users.IUserService;
 
 /**This class is responsible for signing a new user to the application
  * 
@@ -36,7 +38,7 @@ public class SignUp extends Activity implements OnClickListener {
 	/**progress bar*/
 	ProgressDialog signUpDialog;
 
-	UserHandler userHandler = null;
+	IUserService userHandler = null;
 	/**The "constructor" of SecurityCamActivity.
 	 * Runs the first time the activity is called.
 	 * Used for initialization.
@@ -59,7 +61,7 @@ public class SignUp extends Activity implements OnClickListener {
 		alertsign = new AlertDialog.Builder(this);
 		signUpDialog = ProgressObject.getNewProgressBar(this, "Signing in...",
 				ProgressDialog.STYLE_SPINNER);
-		userHandler = new UserHandler();
+		userHandler = (IUserService) ObjectFactory.instance().getInstance("UserHandler");
 	}
 
 	/**
@@ -116,31 +118,39 @@ public class SignUp extends Activity implements OnClickListener {
 	 */
 	private void signUp(String username, String password, String email) {
 		signUpDialog.show();
-		SignupResult result =  userHandler.signUp(username, email, password);
-		if(result.Result == SignupResultEnum.Parameter_Fail &&
-				result.InputResult == InputParametersEnum.UsernameInvalid	)
+		if(userHandler != null)
 		{
-			onParameterIlegal("Illegal userName\n");
-		}
-		if(result.Result == SignupResultEnum.Parameter_Fail &&
-				result.InputResult == InputParametersEnum.EmailInvalid	)
-		{
-			onParameterIlegal("Illegal e-mail\n");
-		}
-		if(result.Result == SignupResultEnum.Parameter_Fail &&
-				result.InputResult == InputParametersEnum.PasswordInvalid	)
-		{
-			onParameterIlegal("Illegal password\n");
-		}
-		
-		if(result.Result == SignupResultEnum.Parse_Fail)
-		{
-			onParameterIlegal(result.Message + "\n");
+			SignupResult result =  userHandler.signUp(username, email, password);
+			if(result.Result == SignupResultEnum.Parameter_Fail &&
+					result.InputResult == InputParametersEnum.UsernameInvalid	)
+			{
+				onParameterIlegal("Illegal userName\n");
+			}
+			if(result.Result == SignupResultEnum.Parameter_Fail &&
+					result.InputResult == InputParametersEnum.EmailInvalid	)
+			{
+				onParameterIlegal("Illegal e-mail\n");
+			}
+			if(result.Result == SignupResultEnum.Parameter_Fail &&
+					result.InputResult == InputParametersEnum.PasswordInvalid	)
+			{
+				onParameterIlegal("Illegal password\n");
+			}
+			
+			if(result.Result == SignupResultEnum.Parse_Fail)
+			{
+				onParameterIlegal(result.Message + "\n");
+			}
+			else {
+				finish();
+				signUpDialog.dismiss();
+			}
 		}
 		else {
 			finish();
 			signUpDialog.dismiss();
 		}
+
 	}
 
 	/**

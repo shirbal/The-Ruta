@@ -6,44 +6,79 @@ import java.util.HashMap;
 
 public class ObjectFactory {
 	
-	private static ObjectFactory instance = null;
+	private static ObjectFactory mInstance = null;
 	
+	/**
+	 * 
+	 */
+	private ObjectFactory() { }
+	
+	/**
+	 * 
+	 * @return
+	 */
+	public static synchronized ObjectFactory instance()
+	{
+		if(mInstance == null)
+		{
+			mInstance = new ObjectFactory();
+		}
+		return mInstance;
+	}
+	/**
+	 * 
+	 */
 	private HashMap<String, Object> registeredClasses = new HashMap<String, Object>();
 	
-	private ObjectFactory()
+	/**
+	 * 
+	 * @param className
+	 * @return
+	 */
+	public Object getInstance(String className)
 	{
-	}
-	
-	public static ObjectFactory Instance()
-	{
-		if(instance == null)
-		{
-			instance = new ObjectFactory();
-		}
-		return instance;
-	}
-	
-
-	public Object getInstance(String className) throws IllegalArgumentException, InstantiationException, IllegalAccessException, InvocationTargetException
-	{
+		Object newInstance = null;
 		if(registeredClasses.containsKey(className)	== false)
 		{
-			registerProduct (className);
+			try {
+				newInstance = createInstance(className);
+				registeredClasses.put(className, newInstance);
+			} catch (IllegalArgumentException e) {
+				e.printStackTrace();
+			} catch (InstantiationException e) {
+				e.printStackTrace();
+			} catch (IllegalAccessException e) {
+				e.printStackTrace();
+			} catch (InvocationTargetException e) {
+				e.printStackTrace();
+			}
 		}
-		return registeredClasses.get(className);
+		else
+		{
+			newInstance = registeredClasses.get(className);
+		}
+		return newInstance;
 	}
 	
+	/**
+	 * 
+	 * @param className
+	 * @param newInstance
+	 */
 	public void register(String className, Object newInstance)
 	{
 		registeredClasses.put(className, newInstance);
 	}
 	
-	private void registerProduct (String className) throws IllegalArgumentException, InstantiationException, IllegalAccessException, InvocationTargetException
-	{
-		Object newInstance = createInstance(className);
-		registeredClasses.put(className, newInstance);
-	}
-
+	/**
+	 * 
+	 * @param className
+	 * @return
+	 * @throws IllegalArgumentException
+	 * @throws InstantiationException
+	 * @throws IllegalAccessException
+	 * @throws InvocationTargetException
+	 */
 	private Object createInstance(String className) throws IllegalArgumentException, InstantiationException, IllegalAccessException, InvocationTargetException
 	{
 		Class<?> productClass = (Class<?>)registeredClasses.get(className);
@@ -51,10 +86,8 @@ public class ObjectFactory {
 		try {
 			productConstructor = productClass.getDeclaredConstructor(new Class[] { String.class });
 		} catch (SecurityException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (NoSuchMethodException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		return productConstructor.newInstance(new Object[] { });

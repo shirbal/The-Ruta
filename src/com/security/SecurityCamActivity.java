@@ -1,11 +1,8 @@
 package com.security;
 
-import java.io.File;
-import java.lang.reflect.InvocationTargetException;
 
 import com.security.R;
-import com.server.UserHandler;
-import com.workers.DestroyThread;
+import com.workers.CacheCleanerTask;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -13,7 +10,6 @@ import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
-import android.os.Environment;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.Window;
@@ -27,6 +23,8 @@ import com.dataobjects.ProgressObject;
 import com.enums.InputParametersEnum;
 import com.enums.LoginResultEnum;
 import com.infrastructure.ObjectFactory;
+import com.infrastructure.users.IUserService;
+import com.infrastructure.users.UserService;
 import com.parse.Parse;
 
 /**The main (first run) class of the application
@@ -49,10 +47,8 @@ public class SecurityCamActivity extends Activity implements OnClickListener {
 	AlertDialog.Builder loginAlertDialog;
 	/**progress dialog*/
 	ProgressDialog loginDialog;
-	/**flag indicates if the phone was stolen*/
-	static Boolean stolenFlag = false;
 	
-	UserHandler userHandler = null;
+	IUserService userHandler = null;
 
 	/**The "constructor" of SecurityCamActivity.
 	 * Runs the first time the activity is called.
@@ -69,8 +65,13 @@ public class SecurityCamActivity extends Activity implements OnClickListener {
 
 		this.getWindow().setSoftInputMode(
 				WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
+		InitializeFactoryObject();
 		initializeDialogs();
 		initializeUser();
+	}
+	
+	private void InitializeFactoryObject() {
+		ObjectFactory.instance().register("IUserHandler", new UserService());
 	}
 	/**
 	 * 
@@ -90,21 +91,12 @@ public class SecurityCamActivity extends Activity implements OnClickListener {
 		editUser = (EditText) findViewById(R.id.loginUser);
 		editPass = (EditText) findViewById(R.id.loginPass);
 	}
+
 	/**
+	 * 
 	 */
 	private void initializeUser() {
-		ObjectFactory.Instance().register("UserHandler", new UserHandler());
-		try {
-			userHandler = (UserHandler) ObjectFactory.Instance().getInstance("UserHandler");
-		} catch (IllegalArgumentException e) {
-			e.printStackTrace();
-		} catch (InstantiationException e) {
-			e.printStackTrace();
-		} catch (IllegalAccessException e) {
-			e.printStackTrace();
-		} catch (InvocationTargetException e) {
-			e.printStackTrace();
-		}
+		userHandler = (UserService) ObjectFactory.instance().getInstance("UserHandler");
 	}
 	/**Called when the CameraActivity start.
 	 * It starts after OnCreate is called or when the activity comes back from pause.
@@ -129,6 +121,7 @@ public class SecurityCamActivity extends Activity implements OnClickListener {
 		loginAlertDialog.setPositiveButton("YES", new DialogInterface.OnClickListener() {
 
 			public void onClick(DialogInterface dialog, int which) {
+				//TODO: maybe change this to ask the user if he wants to deletes the file
 				deleteRecordedFilesFromPhone();
 				onDestroy();
 				finish();
@@ -219,7 +212,6 @@ public class SecurityCamActivity extends Activity implements OnClickListener {
 	@Override
 	protected void onResume() {
 		super.onResume();
-		stolenFlag = false;
 		editPass.setText("");
 		editUser.setText("");
 	}
@@ -229,9 +221,6 @@ public class SecurityCamActivity extends Activity implements OnClickListener {
 	 * Unnecessary to keep it on the phone.
 	 */
 	private void deleteRecordedFilesFromPhone() {
-		String str = Environment.getExternalStoragePublicDirectory(
-				Environment.DIRECTORY_PICTURES).getPath()
-				+ File.separator + "CameraSecurity";
-		new DestroyThread().execute(str);
+		new CacheCleanerTask().execute();
 	}
 }
